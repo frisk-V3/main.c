@@ -1,24 +1,43 @@
-name: Production C Build
+name: Multi-OS Cross Build
 
 on:
   push:
     branches: [ "main" ]
 
 jobs:
-  release-build:
-    runs-on: ubuntu-latest
+  build:
+    name: Build on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        # 3つのOS環境（コンテナ）を同時に立ち上げる設定
+        os: [ubuntu-latest, windows-latest, macos-latest]
 
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
 
-    - name: Compile with Commit ID
-      run: |
-        SHORT_SHA=$(git rev-parse --short HEAD)
-        gcc -DVERSION="\"$SHORT_SHA\"" -o app_${SHORT_SHA} main.c
+    # --- Linux環境（Ubuntu）でのビルド手順 ---
+    - name: Build for Linux
+      if: matrix.os == 'ubuntu-latest'
+      run: gcc -o app_linux main.c
 
-    - name: Upload Executable Artifact
+    # --- Windows環境でのビルド手順 ---
+    - name: Build for Windows
+      if: matrix.os == 'windows-latest'
+      run: gcc -o app_windows.exe main.c
+
+    # --- Mac環境でのビルド手順 ---
+    - name: Build for Mac
+      if: matrix.os == 'macos-latest'
+      run: gcc -o app_mac main.c
+
+    # --- 出来上がったファイルをそれぞれ保存 ---
+    - name: Upload Artifact
       uses: actions/upload-artifact@v4
       with:
-        name: compiled-application
-        path: app_*
+        name: program-${{ matrix.os }}
+        path: |
+          app_linux
+          app_windows.exe
+          app_mac
