@@ -10,29 +10,41 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        # 3つのOS環境（コンテナ）を同時に立ち上げる設定
         os: [ubuntu-latest, windows-latest, macos-latest]
 
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
 
-    # --- Linux環境（Ubuntu）でのビルド手順 ---
+    # --- Linux環境（Ubuntu）でのビルド ---
     - name: Build for Linux
       if: matrix.os == 'ubuntu-latest'
-      run: gcc -o app_linux main.c
+      run: gcc -O3 -D_SIGNATURE_='"frisk-V3"' -o app_linux main.c
 
-    # --- Windows環境でのビルド手順 ---
-    - name: Build for Windows
-      if: matrix.os == 'windows-latest'
-      run: gcc -o app_windows.exe main.c
-
-    # --- Mac環境でのビルド手順 ---
+    # --- Mac環境でのビルド ---
     - name: Build for Mac
       if: matrix.os == 'macos-latest'
-      run: gcc -o app_mac main.c
+      run: gcc -O3 -D_SIGNATURE_='"frisk-V3"' -o app_mac main.c
 
-    # --- 出来上がったファイルをそれぞれ保存 ---
+    # --- Windows環境でのビルドとメタデータ書き込み ---
+    - name: Build and Resource Edit for Windows
+      if: matrix.os == 'windows-latest'
+      run: |
+        # コンパイル実行
+        gcc -O3 -D_SIGNATURE_='"frisk-V3"' -o app_windows.exe main.c
+        
+        # 簡易編集ツール rcedit のダウンロード
+        Invoke-WebRequest -Uri "https://github.com/electron/rcedit/releases/download/v2.0.0/rcedit-x64.exe" -OutFile "rcedit.exe"
+        
+        # frisk-V3 の情報をプロパティに注入
+        ./rcedit.exe "app_windows.exe" --set-version-string "CompanyName" "frisk-V3"
+        ./rcedit.exe "app_windows.exe" --set-version-string "LegalCopyright" "Copyright (C) 2026 frisk-V3"
+        ./rcedit.exe "app_windows.exe" --set-version-string "FileDescription" "Production by frisk-V3"
+        
+        # 不要になったツールを削除
+        Remove-Item "rcedit.exe"
+
+    # --- 成果物の保存 ---
     - name: Upload Artifact
       uses: actions/upload-artifact@v4
       with:
